@@ -36,8 +36,10 @@ jobs:
 
       - name: Build release APKs
         run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease --stacktrace
+          ls -la 2>&1 | head -n 20
+          ls gradlew* 2>&1 | head -n 10
+          chmod +x gradlew || chmod +x gradlew.bat
+          if [ -f gradlew ]; then ./gradlew assembleRelease --stacktrace; else ./gradlew.bat assembleRelease --stacktrace; fi
 
       - name: Rename APKs
         run: |
