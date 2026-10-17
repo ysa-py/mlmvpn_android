@@ -663,7 +663,7 @@
          switch whose effect the user cannot predict is a switch they will never touch.
          ================================================================================== -->
     <string name="chain_no_outer_psiphon">No WARP transport could carry Psiphon on this network.</string>
-    <string name="chain_no_outer_tor">No WARP transport could carry Tor on this network.</string>
+    <string name="chain_no_outer_tor">No outer transport could carry Tor on this network.</string>
     <string name="chain_pinned_failed_psiphon">%1$s could not carry Psiphon. Try Auto in settings.</string>
     <string name="chain_pinned_failed_tor">%1$s could not carry Tor. Try Auto in settings.</string>
     <string name="gool_about_body">A WireGuard tunnel carried inside a MASQUE one — two layers instead of one. Slower, and the reason to reach for it is a network that blocks either layer on its own.\n\nThe outer layer is not configurable here. The core fixes its traffic shaping because three separate places have to agree on that value: the code that raises the tunnel, the check that decides whether a cached gateway can be reused, and what gets written into the cache. A setting would change one of the three and silently disagree with the other two.</string>
@@ -725,8 +725,22 @@
     <string name="settings_split_exclude_hint">What you tick stays on the normal connection — banking apps that refuse to work over a VPN, for instance.</string>
     <string name="settings_split_include">Only selected apps</string>
     <string name="settings_split_include_hint">Only what you tick is tunnelled. Everything else uses the normal connection.</string>
-    <string name="tor_chain">Run Tor inside a WARP tunnel</string>
+    <string name="tor_chain">Run Tor inside a tunnel</string>
     <string name="tor_chain_hint">For networks that block Tor itself, including its bridges. Used only when Tor cannot bootstrap on its own, so leaving it on costs nothing when it is not needed.</string>
+    <string name="tor_inside_warp">Tor inside WARP</string>
+    <string name="tor_inside_tunnel">Tor inside a tunnel</string>
+    <string name="if_the_network_blocks_tor_itself_bring2">If the network blocks Tor itself, bring an outer tunnel up first (WARP or your V2Ray node)</string>
+    <string name="v2ray_outer_hint">Your own VLESS / VMess / Trojan node carries Tor. Needs a saved node; no WARP involved.</string>
+    <string name="v2ray_node">V2Ray node</string>
+    <string name="best_working_node">Best working node</string>
+    <string name="best_working_node_hint">The node that last carried Tor, otherwise the fastest tested one</string>
+    <string name="v2ray_privacy_footer">Your V2Ray server can see that you connect to Tor, but not what you do inside it.</string>
+    <string name="v2ray_no_nodes_hint">No V2Ray nodes are saved. Add one in Nodes, or pick another outer layer.</string>
+    <string name="open_nodes">Open Nodes</string>
+    <string name="v2ray_pinned_failed">%1$s could not carry Tor. Pick another node or switch to Best working node.</string>
+    <string name="v2ray_pinned_gone">The pinned V2Ray node no longer exists. Pick another node or switch to Best working node.</string>
+    <string name="v2ray_no_usable">No usable V2Ray node was available to carry Tor.</string>
+    <string name="v2ray_cannot_reach_tor">This node reaches the internet but not Tor relays; some hosting networks block Tor.</string>
     <string name="tor_mode_auto">Automatic</string>
     <string name="tor_mode_auto_hint">Tries each method in turn until one connects. Right when you do not already know what your network blocks.</string>
     <string name="tor_mode_direct">Direct</string>
@@ -1500,6 +1514,7 @@
     <string name="turn_auto_switch_on">Turn auto switch on</string>
     <string name="turn_on_the_first_server">Turn on the first server</string>
     <string name="turn_on_tor_inside_warp">turn on “Tor inside WARP”.</string>
+    <string name="turn_on_tor_inside_tunnel">turn on “Tor inside a tunnel”.</string>
     <string name="uae_dns">UAE DNS</string>
     <string name="udp_acceleration">UDP acceleration</string>
     <string name="unknown">Unknown</string>

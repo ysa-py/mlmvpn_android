@@ -451,6 +451,9 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
     @Volatile
     private var chainOuterCommitted = false
 
+    @Volatile
+    private var v2rayOuterActive = false
+
     // Evidence about how the tunnel was actually established, gathered from
     // Psiphon's own notices rather than inferred from which rung was active.
     private var activeTunnelProtocol = ""
@@ -3567,6 +3570,26 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
             val label = CoreConfig.chainOuterLabel(protocol)
             val budget = chainOuterBudgetMs(protocol)
 
+            if (protocol == "v2ray") {
+                val result = runV2RayOuterLeg(budget)
+                if (result != null) {
+                    if (auto) {
+                        getSharedPreferences("settings", Context.MODE_PRIVATE).edit()
+                            .putInt(CoreConfig.CHAIN_OUTER_PREF, index).apply()
+                    }
+                    chainOuterCommitted = true
+                    v2rayOuterActive = true
+                    return result
+                }
+                if (stopRequested.get()) return null
+                if (auto) {
+                    ConnectionLog.record("Chain: V2Ray did not come up; trying the next transport")
+                } else {
+                    ConnectionLog.record("Chain: V2Ray did not come up and it is pinned; switch to Auto to try the others")
+                }
+                continue
+            }
+
             // The core must be fully idle before this rung starts. If a previous
             // rung is still unwinding, `startProxy` returns "already running"
             // immediately while `isRunning`/`isReady` still describe the OLD tunnel
@@ -3669,7 +3692,42 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
     private fun chainOuterBudgetMs(protocol: String): Long = when (protocol) {
         "masque" -> 50_000L
         "wireguard" -> 40_000L
+        "v2ray" -> 45_000L
         else -> 60_000L
+    }
+
+    private fun runV2RayOuterLeg(budgetMs: Long): String? {
+        val socksPort = CoreConfig.chainSocksPort(this)
+        val own = V2RayOuterLeg.ownPorts(this)
+        val allNodes = com.mlmvpn.scanner.data.NodeManager(this).nodes.toList()
+        val eligible = allNodes.filter { V2RayOuterLeg.isEligible(it, own) }
+        if (eligible.isEmpty()) {
+            ConnectionLog.record("Chain: V2Ray has no usable node; skipping")
+            return null
+        }
+        val pinnedId = V2RayOuterLeg.readPinnedNodeId(this)
+        val cand = V2RayOuterLeg.resolveCandidates(this, eligible, pinnedId)
+        if (cand.ordered.isEmpty()) {
+            if (cand.pinnedMissing) {
+                ConnectionLog.record("Chain: pinned V2Ray node ${cand.pinnedId} not found")
+            }
+            return null
+        }
+        val deadline = android.os.SystemClock.elapsedRealtime() + budgetMs
+        val isPinned = pinnedId != "auto"
+        val tryList = if (isPinned) cand.ordered.take(1) else cand.ordered.take(6)
+        for (node in tryList) {
+            if (stopRequested.get()) return null
+            if (android.os.SystemClock.elapsedRealtime() >= deadline) break
+            ConnectionLog.record("Chain: trying V2Ray node ${node.name}")
+            sendStatus(STATUS_CONNECTING, "Connecting V2Ray…")
+            if (V2RayOuterLeg.start(this, node, socksPort)) {
+                ConnectionLog.record("Chain: V2Ray node ${node.name} is carrying the outer leg")
+                return "V2Ray"
+            }
+            if (isPinned) break
+        }
+        return null
     }
 
     /**
@@ -3680,6 +3738,11 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
      * "tunnel already running" and the rung fails for the wrong reason.
      */
     private fun stopOuterLeg() {
+        if (v2rayOuterActive) {
+            V2RayOuterLeg.stop()
+            v2rayOuterActive = false
+            return
+        }
         TunnelEngine.stop()
         val deadline = SystemClock.elapsedRealtime() + OUTER_STOP_GRACE_MS
         while (TunnelEngine.isRunning() && SystemClock.elapsedRealtime() < deadline) {
