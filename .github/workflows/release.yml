@@ -52,6 +52,8 @@ jobs:
           # gradle.properties holds settings for the maintainer's Windows PC: a SOCKS proxy on
           # 127.0.0.1:10808, the Android Studio JDK under C:/Program Files, and a C:\ temp dir.
           # None of them exist on this runner, and the proxy would refuse every download.
+          # The 2 GB daemon heap is too small for R8 (release shrinking) on the native cores:
+          # the build died with OutOfMemoryError in R8Task. The runner has 16 GB, so it gets 5 GB.
           # Only this runner's checkout is changed. The committed file is left as it is, so the
           # Windows build keeps its settings.
           sed -i -E \
@@ -59,6 +61,7 @@ jobs:
             -e '/^org\.gradle\.java\.home=/d' \
             -e '/^org\.gradle\.java\.installations\.paths=/d' \
             -e 's/ -Djdk\.net\.unixdomain\.tmpdir=[^ ]*//' \
+            -e 's/-Xmx[0-9]+[mMgG]/-Xmx5g/' \
             gradle.properties
           echo "gradle.properties as used on this runner:"
           cat gradle.properties
@@ -84,7 +87,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          { echo '### TEMP diagnostics'; echo '```'; cat /tmp/diag.txt 2>/dev/null; echo '```'; echo '### build tail'; echo '```'; tail -c 45000 /tmp/build.log 2>/dev/null || echo 'no build log'; echo '```'; } > /tmp/body.md
+          { echo '### TEMP diagnostics'; echo '```'; cat /tmp/diag.txt 2>/dev/null; echo '```'; echo '### what went wrong'; echo '```'; grep -n -A14 'What went wrong' /tmp/build.log 2>/dev/null | head -c 12000; echo '```'; echo '### build tail'; echo '```'; tail -c 20000 /tmp/build.log 2>/dev/null || echo 'no build log'; echo '```'; } > /tmp/body.md
           gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" -F body=@/tmp/body.md --jq '.html_url'
 
       - name: Rename APKs
