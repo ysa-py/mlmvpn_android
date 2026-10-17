@@ -73,8 +73,19 @@ jobs:
 
       - name: Build release APKs
         run: |
+          set -o pipefail
           chmod +x gradlew
-          ./gradlew assembleRelease --stacktrace
+          # TEMP DIAGNOSTICS (remove with the trigger): keep the build output for the reporting step.
+          { echo "JAVA_HOME=$JAVA_HOME"; which java; java -version 2>&1; ls -la gradlew gradle/wrapper; sha256sum gradle/wrapper/gradle-wrapper.jar; } > /tmp/diag.txt 2>&1 || true
+          ./gradlew assembleRelease --stacktrace 2>&1 | tee /tmp/build.log
+
+      - name: TEMP report build failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          { echo '### TEMP diagnostics'; echo '```'; cat /tmp/diag.txt 2>/dev/null; echo '```'; echo '### build tail'; echo '```'; tail -c 45000 /tmp/build.log 2>/dev/null || echo 'no build log'; echo '```'; } > /tmp/body.md
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" -F body=@/tmp/body.md --jq '.html_url'
 
       - name: Rename APKs
         run: |
