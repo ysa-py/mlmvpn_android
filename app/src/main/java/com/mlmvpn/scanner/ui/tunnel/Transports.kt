@@ -151,7 +151,7 @@ enum class Transport(
                     S(R.string.the_carrier_has_targeted_cloudflare_s_addresses)
             TOR ->
                 S(R.string.the_slowest_option_and_the_most_anonymous) +
-                    S(R.string.turn_on_tor_inside_warp)
+                    S(R.string.turn_on_tor_inside_tunnel)
             GEPH -> S(R.string.geph_advice)
             CFWG -> S(R.string.cfwarp_advice)
         }

@@ -659,7 +659,7 @@
          switch whose effect the user cannot predict is a switch they will never touch.
          ================================================================================== -->
     <string name="chain_no_outer_psiphon">هیچ‌کدام از حامل‌های WARP نتوانستند سایفون را روی این شبکه ببرند.</string>
-    <string name="chain_no_outer_tor">هیچ‌کدام از حامل‌های WARP نتوانستند تور را روی این شبکه ببرند.</string>
+    <string name="chain_no_outer_tor">هیچ ترابری بیرونی نتوانست تور را حمل کند.</string>
     <string name="chain_pinned_failed_psiphon">%1$s نتوانست سایفون را ببرد. در تنظیمات، خودکار را امتحان کنید.</string>
     <string name="chain_pinned_failed_tor">%1$s نتوانست تور را ببرد. در تنظیمات، خودکار را امتحان کنید.</string>
     <string name="gool_about_body">یک تونل وایرگارد که داخل یک تونل MASQUE حمل می‌شود — دو لایه به‌جای یکی. کندتر است، و دلیل سراغ‌رفتنش شبکه‌ای است که هر کدام از دو لایه را به‌تنهایی می‌بندد.\n\nلایهٔ بیرونی اینجا قابل تنظیم نیست. هسته شکل‌دهی ترافیک آن را ثابت نگه می‌دارد چون سه جای مختلف باید سر همین مقدار توافق داشته باشند: کدی که تونل را بالا می‌آورد، بررسی‌ای که تصمیم می‌گیرد گیت‌وی ذخیره‌شده قابل استفادهٔ دوباره هست یا نه، و چیزی که در حافظه نوشته می‌شود. یک تنظیم اینجا فقط یکی از این سه را عوض می‌کرد و بی‌سروصدا با آن دوتای دیگر ناسازگار می‌شد.</string>
@@ -721,7 +721,7 @@
     <string name="settings_split_exclude_hint">آنچه تیک می‌زنید روی اتصال عادی می‌ماند — مثلاً اپ‌های بانکی که روی VPN کار نمی‌کنند.</string>
     <string name="settings_split_include">فقط برنامه‌های انتخاب‌شده</string>
     <string name="settings_split_include_hint">فقط آنچه تیک می‌زنید از تونل می‌رود. بقیه از اتصال عادی استفاده می‌کنند.</string>
-    <string name="tor_chain">اجرای تور داخل تونل WARP</string>
+    <string name="tor_chain">اجرای تور داخل تونل</string>
     <string name="tor_chain_hint">برای شبکه‌هایی که خود تور و حتی پل‌هایش را بسته‌اند. فقط وقتی استفاده می‌شود که تور به‌تنهایی نتواند بالا بیاید، پس روشن گذاشتنش وقتی لازم نیست هزینه‌ای ندارد.</string>
     <string name="tor_mode_auto">خودکار</string>
     <string name="tor_mode_auto_hint">هر روش را به‌ترتیب امتحان می‌کند تا یکی وصل شود. وقتی از قبل نمی‌دانید شبکه‌تان چه چیزی را بسته، انتخاب درست همین است.</string>
@@ -1492,6 +1492,7 @@
     <string name="turn_auto_switch_on">روشن کردن سوییچ خودکار</string>
     <string name="turn_on_the_first_server">روشن کردن سرور اول</string>
     <string name="turn_on_tor_inside_warp">«تور داخل وارپ» را روشن کنید.</string>
+    <string name="turn_on_tor_inside_tunnel">«تور داخل تونل» را روشن کنید.</string>
     <string name="uae_dns">DNS امارات</string>
     <string name="udp_acceleration">شتاب‌دهی UDP</string>
     <string name="unknown">نامشخص</string>
@@ -2348,6 +2349,19 @@
     <string name="tls_record_fragmentation">تکه‌تکه‌کردن رکورد TLS</string>
     <string name="tor_connection_mode">حالت اتصال تور</string>
     <string name="tor_inside_warp">تور داخل وارپ</string>
+    <string name="tor_inside_tunnel">تور داخل تونل</string>
+    <string name="if_the_network_blocks_tor_itself_bring2">اگر شبکه خود تور را بسته باشد، اول یک تونل بیرونی (WARP یا نود V2Ray شما) بالا بیاور</string>
+    <string name="v2ray_outer_hint">نود VLESS / VMess / Trojan خودتان تور را حمل می‌کند. به یک نود ذخیره‌شده نیاز دارد؛ هیچ WARPی در کار نیست.</string>
+    <string name="v2ray_node">نود V2Ray</string>
+    <string name="best_working_node">بهترین نود فعال</string>
+    <string name="best_working_node_hint">نودی که آخرین بار تور را حمل کرد، وگرنه سریع‌ترین نود آزمایش‌شده</string>
+    <string name="v2ray_privacy_footer">سرور V2Ray شما می‌بیند که به تور وصل می‌شوید، اما نمی‌بیند داخل تور چه می‌کنید.</string>
+    <string name="v2ray_no_nodes_hint">هیچ نود V2Rayای ذخیره نشده است. در بخش نودها یکی اضافه کنید یا لایهٔ بیرونی دیگری انتخاب کنید.</string>
+    <string name="open_nodes">باز کردن نودها</string>
+    <string name="v2ray_pinned_failed">%1$s نتوانست تور را حمل کند. نود دیگری انتخاب کنید یا «بهترین نود فعال» را بزنید.</string>
+    <string name="v2ray_pinned_gone">نود V2Ray انتخاب‌شده دیگر وجود ندارد. نود دیگری انتخاب کنید یا «بهترین نود فعال» را بزنید.</string>
+    <string name="v2ray_no_usable">هیچ نود V2Ray قابل‌استفاده‌ای برای حمل تور موجود نبود.</string>
+    <string name="v2ray_cannot_reach_tor">این نود به اینترنت می‌رسد اما به رله‌های تور نه؛ برخی شبکه‌های هاستینگ تور را مسدود می‌کنند.</string>
     <string name="tor_s_outer_layer">لایهٔ بیرونی تور</string>
     <string name="trace">ردیابی</string>
     <string name="traffic_shaping">شکل‌دهی ترافیک</string>

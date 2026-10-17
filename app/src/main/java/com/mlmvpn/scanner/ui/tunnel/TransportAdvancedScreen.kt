@@ -94,6 +94,7 @@ fun TransportAdvancedScreen(transport: Transport, onBack: () -> Unit) {
     var wgDataCheck by remember { mutableStateOf(prefs.wireguardDataCheck) }
     var chainOuter by remember { mutableStateOf(prefs.chainOuterMode) }
     var chainOuterTor by remember { mutableStateOf(prefs.chainOuterModeTor) }
+    var v2rayNode by remember { mutableStateOf(prefs.chainOuterV2rayNode) }
     var torChainArmed by remember { mutableStateOf(prefs.torChainArmed) }
     var killSwitch by remember { mutableStateOf(prefs.killSwitch) }
     var autoReconnect by remember { mutableStateOf(prefs.autoReconnect) }
@@ -224,7 +225,7 @@ fun TransportAdvancedScreen(transport: Transport, onBack: () -> Unit) {
 
         P_CHAIN_TOR -> IosPickerScreen(
             title = S(R.string.tor_s_outer_layer),
-            options = CHAIN_OUTER,
+            options = CHAIN_OUTER_TOR,
             selectedKey = chainOuterTor,
             onSelect = { chainOuterTor = it; prefs.chainOuterModeTor = it },
             onBack = ::pop,
@@ -245,6 +246,13 @@ fun TransportAdvancedScreen(transport: Transport, onBack: () -> Unit) {
                 S(R.string.works_it_both_connects_faster_and_runs) +
                 S(R.string.because_to_the_network_it_looks_like) +
                 S(R.string.http_round_trip),
+        )
+
+        P_V2RAY_NODE -> V2RayNodePickerPage(
+            selectedId = v2rayNode,
+            onSelect = { v2rayNode = it; prefs.chainOuterV2rayNode = it },
+            onBack = ::pop,
+            backLabel = backLabel,
         )
 
         P_LOG_LEVEL -> IosPickerScreen(
@@ -488,20 +496,32 @@ fun TransportAdvancedScreen(transport: Transport, onBack: () -> Unit) {
                 }
 
                 Transport.TOR -> {
+                    val outerLabel = labelOf(CHAIN_OUTER_TOR, chainOuterTor)
                     SettingsSectionHeader(S(R.string.when_tor_will_not_bootstrap_on_its))
                     SettingsGroup {
                         SettingsToggle(
-                            title = S(R.string.tor_inside_warp),
+                            title = S(R.string.tor_inside_tunnel),
                             checked = torChainArmed,
                             onCheckedChange = { torChainArmed = it; prefs.torChainArmed = it },
                             icon = Icons.Default.Shield,
                             tint = Ios.Purple,
-                            subtitle = S(R.string.if_the_network_blocks_tor_itself_bring),
+                            subtitle = S(R.string.if_the_network_blocks_tor_itself_bring2),
                         )
                         Separator()
                         SettingsRow(S(R.string.outer_layer), Icons.Default.Layers, Ios.Orange,
-                            value = labelOf(CHAIN_OUTER, chainOuterTor),
+                            value = outerLabel,
                             onClick = { push(P_CHAIN_TOR) })
+                        if (chainOuterTor == "auto" || chainOuterTor == "v2ray") {
+                            Separator()
+                            val v2rayNodeId = prefs.chainOuterV2rayNode
+                            val v2rayLabel = if (v2rayNodeId == "auto") S(R.string.best_working_node) else run {
+                                val n = com.mlmvpn.scanner.data.NodeManager(context).nodes.firstOrNull { it.id == v2rayNodeId }
+                                n?.name ?: S(R.string.best_working_node)
+                            }
+                            SettingsRow(S(R.string.v2ray_node), Icons.Default.Link, Ios.Teal,
+                                value = v2rayLabel,
+                                onClick = { push(P_V2RAY_NODE) })
+                        }
                     }
                     Footer(
                         S(R.string.only_direct_and_meek_are_allowed_to) +
@@ -803,6 +823,14 @@ private val CHAIN_OUTER = listOf(
     IosOption("gool", S(R.string.warp_in_warp_2), S(R.string.two_tunnels_under_the_inner_one_so)),
 )
 
+private val CHAIN_OUTER_TOR = listOf(
+    IosOption("auto", S(R.string.automatic_2), S(R.string.try_the_list_from_the_top_the)),
+    IosOption("masque", "MASQUE", S(R.string.it_has_its_own_two_transports_and)),
+    IosOption("wireguard", "WireGuard", S(R.string.blocked_outright_on_some_carriers_instant_on)),
+    IosOption("gool", S(R.string.warp_in_warp_2), S(R.string.two_tunnels_under_the_inner_one_so)),
+    IosOption("v2ray", "V2Ray", S(R.string.v2ray_outer_hint)),
+)
+
 private val TOR_MODES = listOf(
     IosOption("auto", S(R.string.automatic_2), S(R.string.tries_the_ladder_from_the_top_until)),
     IosOption("direct", S(R.string.direct_2), S(R.string.no_bridge_for_a_network_that_has)),
@@ -837,6 +865,7 @@ private const val P_MANUAL = "manual"
 private const val P_CHAIN = "chain"
 private const val P_CHAIN_TOR = "chain_tor"
 private const val P_TOR_MODE = "tor_mode"
+private const val P_V2RAY_NODE = "v2ray_node"
 private const val P_LOG_LEVEL = "log_level"
 private const val P_PERF = "perf"
 private const val P_ROUTE_DIRECT = "route_direct"
