@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - 'v*'
+    # TEMPORARY (verification only, removed before merge): run the build on this session branch.
+    branches:
+      - arena/7af180d9-mlmvpn-android
   workflow_dispatch:
 
 permissions:
