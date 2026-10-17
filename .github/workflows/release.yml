@@ -67,7 +67,7 @@ jobs:
           cat gradle.properties
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.gradle/caches
@@ -89,6 +89,30 @@ jobs:
         run: |
           { echo '### TEMP diagnostics'; echo '```'; cat /tmp/diag.txt 2>/dev/null; echo '```'; echo '### what went wrong'; echo '```'; grep -n -A14 'What went wrong' /tmp/build.log 2>/dev/null | head -c 12000; echo '```'; echo '### build tail'; echo '```'; tail -c 20000 /tmp/build.log 2>/dev/null || echo 'no build log'; echo '```'; } > /tmp/body.md
           gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" -F body=@/tmp/body.md --jq '.html_url'
+
+      - name: TEMP verify APKs
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 - <<'PY' > /tmp/verify.md
+          import glob, zipfile, os
+          print('### TEMP APK verification')
+          for apk in sorted(glob.glob('app/build/outputs/apk/**/*.apk', recursive=True)):
+              print('```')
+              print(f'{apk}  {os.path.getsize(apk)} bytes')
+              z = zipfile.ZipFile(apk)
+              names = z.namelist()
+              print('dex files:', sum(1 for n in names if n.startswith('classes') and n.endswith('.dex')))
+              for n in names:
+                  if n.endswith('.so'):
+                      info = z.getinfo(n)
+                      is_elf = z.read(n)[:4] == b'\x7fELF'
+                      print('  ' + n + '  ' + str(info.file_size) + ' bytes  ELF=' + str(is_elf))
+              print('```')
+          PY
+          cat /tmp/verify.md
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" -F body=@/tmp/verify.md --jq '.html_url'
 
       - name: Rename APKs
         run: |
