@@ -169,7 +169,16 @@ object CoreConfig {
      * The rung that works is remembered per device, so this ordering only decides
      * the very first attempt.
      */
-    val CHAIN_OUTER_LADDER = listOf("masque", "wireguard", "gool")
+    /**
+     * The outer transports tried, in order, until one carries the inner tunnel.
+     *
+     * `v2ray` is last on purpose: the three WARP rungs need no user node and work
+     * zero-config, while V2Ray requires a saved node. Placing it last keeps the
+     * existing index semantics intact and incurs its cost only when the free rungs
+     * are blocked or when the user explicitly pins it. Psiphon's candidates filter
+     * it out (see [chainOuterCandidates]); only Tor may use it.
+     */
+    val CHAIN_OUTER_LADDER = listOf("masque", "wireguard", "gool", "v2ray")
 
     /**
      * Which transport the user pinned for the chain's outer leg, or "auto".
@@ -557,11 +566,12 @@ object CoreConfig {
             .getString(key, CHAIN_OUTER_AUTO)
             ?.trim()
             .orEmpty()
-        return when {
+        val ladder = when {
             mode.isEmpty() || mode == CHAIN_OUTER_AUTO -> CHAIN_OUTER_LADDER
             CHAIN_OUTER_LADDER.contains(mode) -> listOf(mode)
             else -> CHAIN_OUTER_LADDER
         }
+        return if (forTor) ladder else ladder.filter { it != "v2ray" }
     }
 
     /** Whether the outer transport is being chosen automatically. */
@@ -573,6 +583,10 @@ object CoreConfig {
         "masque" -> "MASQUE"
         "wireguard" -> "WireGuard"
         "gool" -> "WoW"
+        "v2ray" -> "V2Ray"
         else -> protocol.uppercase()
     }
+
+    const val CHAIN_OUTER_V2RAY_NODE_PREF = "chain_outer_v2ray_node"
+    const val CHAIN_OUTER_V2RAY_WINNER_PREF = "chain_outer_v2ray_winner"
 }

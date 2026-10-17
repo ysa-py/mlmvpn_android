@@ -4,6 +4,16 @@ All notable changes to the MLM VPN Android app are documented here. Dates are in
 
 فارسی این فایل در ادامه (پایین همین صفحه) آمده است.
 
+## [1.2.42] — 2026-10-17
+
+### Added
+- **Tor over V2Ray (Tor inside V2Ray)** — a new outer layer for Tor: Tor bootstraps through one of the user's own VLESS/VMess/Trojan/Shadowsocks nodes via an in-process Xray SOCKS listener on chainSocksPort.
+  - V2Ray joins the Tor outer-layer ladder as the last rung (Tor-only; Psiphon's candidates stay WARP-only).
+  - Automatic picks the last winning node or the fastest tested one; pinning a node enforces no fallback.
+  - Data-path probe (real HTTP through SOCKS) — a port-accept alone is not trusted.
+  - V2Ray node picker (Best working node first) and privacy footer; empty-state hint with Open Nodes action.
+  - “Tor inside WARP” renamed to “Tor inside a tunnel” (now covers WARP or V2Ray) in both locales.
+
 ## [1.2.39] — 2026-10-01
 
 ### Added

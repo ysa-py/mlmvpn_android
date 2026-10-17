@@ -1508,6 +1508,120 @@ object XrayJsonGenerator {
         }
     }
 
+    private fun buildOutbound(config: VpnConfig): JSONObject {
+        val outbound = JSONObject()
+        when (config.protocol) {
+            "vless" -> {
+                outbound.put("protocol", "vless")
+                outbound.put("settings", JSONObject().put("vnext", JSONArray().put(JSONObject().apply {
+                    put("address", config.address)
+                    put("port", config.port)
+                    put("users", JSONArray().put(vlessUser(config)))
+                })))
+            }
+            "trojan" -> {
+                outbound.put("protocol", "trojan")
+                outbound.put("settings", JSONObject().put("servers", JSONArray().put(JSONObject().apply {
+                    put("address", config.address)
+                    put("port", config.port)
+                    put("password", config.uuid)
+                })))
+            }
+            "vmess" -> {
+                outbound.put("protocol", "vmess")
+                outbound.put("settings", JSONObject().put("vnext", JSONArray().put(JSONObject().apply {
+                    put("address", config.address)
+                    put("port", config.port)
+                    put("users", JSONArray().put(JSONObject().apply {
+                        put("id", config.uuid)
+                        put("alterId", config.alterId)
+                        put("security", config.vmessSecurity.ifBlank { "auto" })
+                    }))
+                })))
+            }
+            "ss" -> {
+                outbound.put("protocol", "shadowsocks")
+                outbound.put("settings", JSONObject().put("servers", JSONArray().put(JSONObject().apply {
+                    put("address", config.address)
+                    put("port", config.port)
+                    put("method", config.method)
+                    put("password", config.password)
+                })))
+            }
+        }
+        outbound.put("streamSettings", buildStream(config))
+        return outbound
+    }
+
+    /**
+     * Minimal chain-outer config: one socks inbound on 127.0.0.1 and one real
+     * outbound derived from [VpnConfig]. Used for Tor-over-V2Ray so Tor sees a
+     * single reachable SOCKS listener on chainSocksPort.
+     */
+    fun generateChainOuterConfig(
+        config: VpnConfig,
+        socksPort: Int,
+        username: String? = null,
+        password: String? = null,
+    ): String {
+        val outbound = buildOutbound(config).apply {
+            put("tag", "proxy")
+            // Mux off — Tor multiplexes on its own; mux inside the leg wastes
+            // framing and breaks a few servers.
+            optJSONObject("streamSettings")?.let { ss ->
+                ss.optJSONObject("mux")?.let { ss.remove("mux") }
+            }
+        }
+        val inboundSettings = JSONObject().apply {
+            if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
+                put("auth", "password")
+                put("accounts", JSONArray().put(JSONObject().put("user", username).put("pass", password)))
+            } else {
+                put("auth", "noauth")
+            }
+            put("udp", false)
+        }
+        val json = JSONObject()
+        json.put("log", JSONObject().apply {
+            put("loglevel", "warning")
+            put("access", JSONObject.NULL)
+        })
+        json.put("inbounds", JSONArray().put(JSONObject().apply {
+            put("port", socksPort)
+            put("listen", "127.0.0.1")
+            put("protocol", "socks")
+            put("tag", "chain-outer")
+            put("settings", inboundSettings)
+        }))
+        json.put("outbounds", JSONArray().put(outbound))
+        json.put("routing", JSONObject().apply {
+            put("domainStrategy", "AsIs")
+            put("rules", JSONArray().put(JSONObject().apply {
+                put("type", "field")
+                put("inboundTag", JSONArray().put("chain-outer"))
+                put("outboundTag", "proxy")
+            }))
+        })
+        json.put("dns", JSONObject().apply {
+            put("servers", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("address", "1.1.1.1")
+                    put("domains", JSONArray().put(config.address))
+                })
+                put("1.1.1.1")
+            })
+        })
+        json.put("policy", JSONObject().apply {
+            put("levels", JSONObject().apply {
+                put("0", JSONObject().apply {
+                    put("connIdle", 300)
+                    put("handshake", 8)
+                })
+            })
+        })
+        return json.toString()
+    }
+
     // Cloudflare WARP well-known peer public key.
     private const val WARP_PUBLIC_KEY = "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuMdxHkJfChtBg="
 

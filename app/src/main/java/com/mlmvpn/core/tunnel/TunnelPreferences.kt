@@ -220,6 +220,14 @@ class TunnelPreferences(context: Context) {
         get() = read(CoreConfig.CHAIN_OUTER_MODE_TOR_PREF, "auto")
         set(value) = write(CoreConfig.CHAIN_OUTER_MODE_TOR_PREF, value)
 
+    var chainOuterV2rayNode: String
+        get() = read(CoreConfig.CHAIN_OUTER_V2RAY_NODE_PREF, "auto")
+        set(value) = write(CoreConfig.CHAIN_OUTER_V2RAY_NODE_PREF, value)
+
+    var chainOuterV2rayWinner: String
+        get() = read(CoreConfig.CHAIN_OUTER_V2RAY_WINNER_PREF, "")
+        set(value) = write(CoreConfig.CHAIN_OUTER_V2RAY_WINNER_PREF, value)
+
     // --- the rest of what the core reads -------------------------------------
     //
     // Everything below is a field [CoreConfig.json] already sends on every connect, for which
