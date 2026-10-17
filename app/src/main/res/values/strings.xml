@@ -727,7 +727,6 @@
     <string name="settings_split_include_hint">Only what you tick is tunnelled. Everything else uses the normal connection.</string>
     <string name="tor_chain">Run Tor inside a tunnel</string>
     <string name="tor_chain_hint">For networks that block Tor itself, including its bridges. Used only when Tor cannot bootstrap on its own, so leaving it on costs nothing when it is not needed.</string>
-    <string name="tor_inside_warp">Tor inside WARP</string>
     <string name="tor_inside_tunnel">Tor inside a tunnel</string>
     <string name="if_the_network_blocks_tor_itself_bring2">If the network blocks Tor itself, bring an outer tunnel up first (WARP or your V2Ray node)</string>
     <string name="v2ray_outer_hint">Your own VLESS / VMess / Trojan node carries Tor. Needs a saved node; no WARP involved.</string>
