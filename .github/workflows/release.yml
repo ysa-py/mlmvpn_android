@@ -23,8 +23,6 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-        with:
-          packages: ''
 
       - name: Cache Gradle
         uses: actions/cache@v4
@@ -36,10 +34,8 @@ jobs:
 
       - name: Build release APKs
         run: |
-          ls -la 2>&1 | head -n 20
-          ls gradlew* 2>&1 | head -n 10
-          chmod +x gradlew || chmod +x gradlew.bat
-          if [ -f gradlew ]; then ./gradlew assembleRelease --stacktrace; else ./gradlew.bat assembleRelease --stacktrace; fi
+          chmod +x gradlew
+          ./gradlew assembleRelease --stacktrace
 
       - name: Rename APKs
         run: |
