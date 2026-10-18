@@ -20,3 +20,10 @@ local.properties
 third_party/openvpn3/*
 !third_party/openvpn3/README.md
 !third_party/openvpn3/source-lock.json
+
+# Release signing: the keystore and its passwords must never be committed.
+# The CI secret is ANDROID_KEYSTORE_BASE64; see docs/RELEASE-SIGNING.md.
+*.jks
+*.keystore
+mlmvpn-release.p12
+keystore.properties

@@ -71,10 +71,61 @@ jobs:
             ~/.gradle/wrapper
           key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
 
+      - name: Prepare release signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          # The release keystore lives only in GitHub Secrets. It is written to the runner's temp
+          # directory (outside the checkout, never committed) and deleted again at the end of the job.
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error title=Release signing::Secret ANDROID_KEYSTORE_BASE64 is missing. Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          if [ -z "$STORE_PASSWORD" ]; then
+            echo "::error title=Release signing::Secret ANDROID_KEYSTORE_PASSWORD is missing. Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/mlmvpn-release.p12"
+          test -s "$RUNNER_TEMP/mlmvpn-release.p12" || { echo "::error title=Release signing::Decoded keystore is empty; check ANDROID_KEYSTORE_BASE64."; exit 1; }
+          echo "Release keystore written to the runner temp directory (contents not printed)."
+
       - name: Build release APKs
+        env:
+          MLM_RELEASE_KEYSTORE: ${{ runner.temp }}/mlmvpn-release.p12
+          MLM_RELEASE_KEY_ALIAS: mlmvpn-release
+          MLM_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --stacktrace
+
+      - name: Verify APK signatures
+        env:
+          # SHA-256 of the release signing certificate. A signed APK from any other key is rejected:
+          # phones only accept updates signed by the key that installed the app first.
+          EXPECTED_CERT_SHA256: b502ed78c0b36edcc7951ca17b16eceea493ef76ecd873bd412f4cf8f73afa19
+        run: |
+          set -euo pipefail
+          apksigner="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools/35.0.0/apksigner"
+          count=0
+          while IFS= read -r apk; do
+            count=$((count + 1))
+            "$apksigner" verify --verbose "$apk"
+            digest=$("$apksigner" verify --print-certs "$apk" | awk -F': ' '/Signer #1 certificate SHA-256 digest/ {print $2}')
+            if [ "$digest" != "$EXPECTED_CERT_SHA256" ]; then
+              echo "::error file=$apk::Signed with certificate $digest, expected $EXPECTED_CERT_SHA256."
+              exit 1
+            fi
+            echo "OK: $apk is signed with the release key."
+          done < <(find app/build/outputs/apk -name '*.apk' -type f)
+          if [ "$count" -eq 0 ]; then
+            echo "::error::No release APKs were produced."
+            exit 1
+          fi
+
+      - name: Remove release keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/mlmvpn-release.p12"
 
       - name: Rename APKs
         run: |
