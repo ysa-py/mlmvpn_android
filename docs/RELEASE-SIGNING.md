@@ -10,7 +10,7 @@ so every release must use the same key.
 |---|---|
 | Keystore type | PKCS#12 (`.p12`) |
 | Key alias | `mlmvpn-release` |
-| Certificate SHA-256 | `3214e32619c6f51bf355269f135bdfb004a1fb58e32711c102eeda1e0e9c6bde` |
+| Certificate SHA-256 | `5fe7e1da56be574fcf5e1332f7dd571f21c3814611db2bd3c6510b6988e0d06a` |
 | Certificate validity | 30 years from creation (2026-10-18) |
 
 The keystore file and its password are **not** in this repository. They live in two places only:

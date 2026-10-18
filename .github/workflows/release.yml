@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - arena/7af180d9-mlmvpn-android   # TEMP signing test trigger (to be reverted)
   workflow_dispatch:
 
 permissions:
@@ -103,7 +105,7 @@ jobs:
         env:
           # SHA-256 of the release signing certificate. A signed APK from any other key is rejected:
           # phones only accept updates signed by the key that installed the app first.
-          EXPECTED_CERT_SHA256: 3214e32619c6f51bf355269f135bdfb004a1fb58e32711c102eeda1e0e9c6bde
+          EXPECTED_CERT_SHA256: 5fe7e1da56be574fcf5e1332f7dd571f21c3814611db2bd3c6510b6988e0d06a
         run: |
           set -euo pipefail
           apksigner="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools/35.0.0/apksigner"
