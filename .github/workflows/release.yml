@@ -151,6 +151,7 @@ jobs:
             grep -n -E "FAIL|rror" "$RUNNER_TEMP/signing.txt" | head -c 1500
             echo "--- decoded keystore file (TEMP diagnostic) ---"
             ls -l "$MLM_RELEASE_KEYSTORE" 2>&1
+            echo "sha256 of decoded keystore file: $(sha256sum "$MLM_RELEASE_KEYSTORE" | cut -d' ' -f1)"
             keytool -list -v -keystore "$MLM_RELEASE_KEYSTORE" -storetype PKCS12 -storepass "$MLM_RELEASE_STORE_PASSWORD" 2>&1 | grep -E "Alias|Entry|SHA256|Owner|Issuer|Serial" | head -c 2000
             echo "--- validateSigning tasks in build log ---"
             grep -n -E "validateSigning|signing" "$RUNNER_TEMP/gradle.log" | head -c 1500
