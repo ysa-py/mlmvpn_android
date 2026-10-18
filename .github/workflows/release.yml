@@ -130,28 +130,37 @@ jobs:
             exit 1
           fi
 
-      - name: Remove release keystore
-        if: always()
-        run: rm -f "$RUNNER_TEMP/mlmvpn-release.p12"
-
       - name: TEMP report signing result
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           JOB_STATUS: ${{ job.status }}
           SECRET_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          MLM_RELEASE_KEYSTORE: ${{ runner.temp }}/mlmvpn-release.p12
+          MLM_RELEASE_KEY_ALIAS: mlmvpn-release
+          MLM_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           files=$(find app/build/outputs/apk -name '*.apk' -type f -printf '%f (%s bytes)\n' 2>/dev/null || true)
+          # TEMP: which signing config does Gradle give the release variant?
+          ./gradlew :app:signingReport --console=plain > "$RUNNER_TEMP/signing.txt" 2>&1 || true
           {
             printf 'TEMP signing test on %s\njob status: %s\nAPKs:\n%s\n' "${GITHUB_SHA}" "$JOB_STATUS" "${files:-none}"
+            echo "--- signingReport (release part) ---"
+            grep -n -B2 -A8 -E "^Variant: release" "$RUNNER_TEMP/signing.txt" | head -c 3000
+            echo "--- signingReport errors ---"
+            grep -n -E "FAIL|rror" "$RUNNER_TEMP/signing.txt" | head -c 1500
+            echo "--- validateSigning tasks in build log ---"
+            grep -n -E "validateSigning|signing" "$RUNNER_TEMP/gradle.log" | head -c 1500
             if [ -f "$RUNNER_TEMP/gradle.log" ]; then
-              echo "--- gradle errors (password masked) ---"
-              grep -n -A15 -E "What went wrong|FAILURE|Exception" "$RUNNER_TEMP/gradle.log" | head -c 9000
-              echo; echo "--- gradle tail ---"
-              tail -c 3000 "$RUNNER_TEMP/gradle.log"
+              echo "--- gradle errors ---"
+              grep -n -A15 -E "What went wrong|FAILURE" "$RUNNER_TEMP/gradle.log" | head -c 4000
             fi
           } | sed "s|${SECRET_PW}|***|g" > "$RUNNER_TEMP/report.txt"
           gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" -F body=@"$RUNNER_TEMP/report.txt" --jq '.html_url'
+
+      - name: Remove release keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/mlmvpn-release.p12"
 
       - name: Rename APKs
         run: |
