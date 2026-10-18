@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-    branches:
-      - arena/7af180d9-mlmvpn-android   # TEMP signing test trigger (to be reverted)
   workflow_dispatch:
 
 permissions:
