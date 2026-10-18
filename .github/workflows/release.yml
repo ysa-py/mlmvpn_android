@@ -99,7 +99,12 @@ jobs:
           MLM_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --stacktrace
+          # TEMP: capture the Gradle output so the error can be read (reverted after the test)
+          set +e
+          ./gradlew assembleRelease --stacktrace > "$RUNNER_TEMP/gradle.log" 2>&1
+          rc=$?
+          set -e
+          exit $rc
 
       - name: Verify APK signatures
         env:
@@ -134,10 +139,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           JOB_STATUS: ${{ job.status }}
+          SECRET_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           files=$(find app/build/outputs/apk -name '*.apk' -type f -printf '%f (%s bytes)\n' 2>/dev/null || true)
-          body=$(printf 'TEMP signing test on %s\njob status: %s\nAPKs:\n%s\n' "${GITHUB_SHA}" "$JOB_STATUS" "${files:-none}")
-          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" -f body="$body" --jq '.html_url'
+          {
+            printf 'TEMP signing test on %s\njob status: %s\nAPKs:\n%s\n' "${GITHUB_SHA}" "$JOB_STATUS" "${files:-none}"
+            if [ -f "$RUNNER_TEMP/gradle.log" ]; then
+              echo "--- gradle errors (password masked) ---"
+              grep -n -A15 -E "What went wrong|FAILURE|Exception" "$RUNNER_TEMP/gradle.log" | head -c 9000
+              echo; echo "--- gradle tail ---"
+              tail -c 3000 "$RUNNER_TEMP/gradle.log"
+            fi
+          } | sed "s|${SECRET_PW}|***|g" > "$RUNNER_TEMP/report.txt"
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" -F body=@"$RUNNER_TEMP/report.txt" --jq '.html_url'
 
       - name: Rename APKs
         run: |
