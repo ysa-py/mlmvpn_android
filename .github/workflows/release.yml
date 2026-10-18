@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-    branches:
-      - arena/7af180d9-mlmvpn-android   # TEMP signing test trigger (to be reverted)
   workflow_dispatch:
 
 permissions:
@@ -99,12 +97,7 @@ jobs:
           MLM_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           chmod +x gradlew
-          # TEMP: capture the Gradle output so the error can be read (reverted after the test)
-          set +e
-          ./gradlew assembleRelease --stacktrace > "$RUNNER_TEMP/gradle.log" 2>&1
-          rc=$?
-          set -e
-          exit $rc
+          ./gradlew assembleRelease --stacktrace
 
       - name: Verify APK signatures
         env:
@@ -129,38 +122,6 @@ jobs:
             echo "::error::No release APKs were produced."
             exit 1
           fi
-
-      - name: TEMP report signing result
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          JOB_STATUS: ${{ job.status }}
-          SECRET_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          MLM_RELEASE_KEYSTORE: ${{ runner.temp }}/mlmvpn-release.p12
-          MLM_RELEASE_KEY_ALIAS: mlmvpn-release
-          MLM_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-        run: |
-          files=$(find app/build/outputs/apk -name '*.apk' -type f -printf '%f (%s bytes)\n' 2>/dev/null || true)
-          # TEMP: which signing config does Gradle give the release variant?
-          ./gradlew :app:signingReport --console=plain > "$RUNNER_TEMP/signing.txt" 2>&1 || true
-          {
-            printf 'TEMP signing test on %s\njob status: %s\nAPKs:\n%s\n' "${GITHUB_SHA}" "$JOB_STATUS" "${files:-none}"
-            echo "--- signingReport (release part) ---"
-            grep -n -B2 -A8 -E "^Variant: release" "$RUNNER_TEMP/signing.txt" | head -c 3000
-            echo "--- signingReport errors ---"
-            grep -n -E "FAIL|rror" "$RUNNER_TEMP/signing.txt" | head -c 1500
-            echo "--- decoded keystore file (TEMP diagnostic) ---"
-            ls -l "$MLM_RELEASE_KEYSTORE" 2>&1
-            echo "sha256 of decoded keystore file: $(sha256sum "$MLM_RELEASE_KEYSTORE" | cut -d' ' -f1)"
-            keytool -list -v -keystore "$MLM_RELEASE_KEYSTORE" -storetype PKCS12 -storepass "$MLM_RELEASE_STORE_PASSWORD" 2>&1 | grep -E "Alias|Entry|SHA256|Owner|Issuer|Serial" | head -c 2000
-            echo "--- validateSigning tasks in build log ---"
-            grep -n -E "validateSigning|signing" "$RUNNER_TEMP/gradle.log" | head -c 1500
-            if [ -f "$RUNNER_TEMP/gradle.log" ]; then
-              echo "--- gradle errors ---"
-              grep -n -A15 -E "What went wrong|FAILURE" "$RUNNER_TEMP/gradle.log" | head -c 4000
-            fi
-          } | sed "s|${SECRET_PW}|***|g" > "$RUNNER_TEMP/report.txt"
-          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" -F body=@"$RUNNER_TEMP/report.txt" --jq '.html_url'
 
       - name: Remove release keystore
         if: always()
