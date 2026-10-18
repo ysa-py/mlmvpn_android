@@ -103,7 +103,7 @@ jobs:
         env:
           # SHA-256 of the release signing certificate. A signed APK from any other key is rejected:
           # phones only accept updates signed by the key that installed the app first.
-          EXPECTED_CERT_SHA256: b502ed78c0b36edcc7951ca17b16eceea493ef76ecd873bd412f4cf8f73afa19
+          EXPECTED_CERT_SHA256: 3214e32619c6f51bf355269f135bdfb004a1fb58e32711c102eeda1e0e9c6bde
         run: |
           set -euo pipefail
           apksigner="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools/35.0.0/apksigner"
