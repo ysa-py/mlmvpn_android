@@ -238,28 +238,30 @@ object V2RayOuterLeg {
         return false
     }
 
-    private fun socksHttpProbe(socksPort: Int, host: String): Boolean = try {
-        val sock = Socket()
-        sock.soTimeout = PROBE_READ_MS
-        sock.connect(InetSocketAddress("127.0.0.1", socksPort), PROBE_CONNECT_MS)
-        val out = sock.getOutputStream()
-        val inp = sock.getInputStream()
-        out.write(byteArrayOf(0x05, 0x01, 0x00)); out.flush()
-        val r1 = ByteArray(2); inp.read(r1)
-        if (r1[0] != 0x05.toByte() || r1[1] != 0x00.toByte()) { sock.close(); return false }
-        val hb = host.toByteArray(Charsets.US_ASCII)
-        val req = ByteArray(4 + 1 + hb.size + 2)
-        req[0]=0x05; req[1]=0x01; req[2]=0x00; req[3]=0x03
-        req[4]=hb.size.toByte(); System.arraycopy(hb,0,req,5,hb.size)
-        req[5+hb.size]=0x00; req[6+hb.size]=0x50
-        out.write(req); out.flush()
-        val r2 = ByteArray(10); inp.read(r2)
-        if (r2[1] != 0x00.toByte()) { sock.close(); return false }
-        val http = "GET / HTTP/1.1\r\nHost: $host\r\nConnection: close\r\n\r\n"
-        out.write(http.toByteArray(Charsets.US_ASCII)); out.flush()
-        val buf = ByteArray(512)
-        val n = inp.read(buf)
-        sock.close()
-        n != null && n > 0 && String(buf, 0, n.coerceAtLeast(0), Charsets.US_ASCII).contains("HTTP/")
-    } catch (_: Exception) { false }
+    private fun socksHttpProbe(socksPort: Int, host: String): Boolean {
+        return try {
+            val sock = Socket()
+            sock.soTimeout = PROBE_READ_MS
+            sock.connect(InetSocketAddress("127.0.0.1", socksPort), PROBE_CONNECT_MS)
+            val out = sock.getOutputStream()
+            val inp = sock.getInputStream()
+            out.write(byteArrayOf(0x05, 0x01, 0x00)); out.flush()
+            val r1 = ByteArray(2); inp.read(r1)
+            if (r1[0] != 0x05.toByte() || r1[1] != 0x00.toByte()) { sock.close(); return false }
+            val hb = host.toByteArray(Charsets.US_ASCII)
+            val req = ByteArray(4 + 1 + hb.size + 2)
+            req[0]=0x05; req[1]=0x01; req[2]=0x00; req[3]=0x03
+            req[4]=hb.size.toByte(); System.arraycopy(hb,0,req,5,hb.size)
+            req[5+hb.size]=0x00; req[6+hb.size]=0x50
+            out.write(req); out.flush()
+            val r2 = ByteArray(10); inp.read(r2)
+            if (r2[1] != 0x00.toByte()) { sock.close(); return false }
+            val http = "GET / HTTP/1.1\r\nHost: $host\r\nConnection: close\r\n\r\n"
+            out.write(http.toByteArray(Charsets.US_ASCII)); out.flush()
+            val buf = ByteArray(512)
+            val n = inp.read(buf)
+            sock.close()
+            n != null && n > 0 && String(buf, 0, n.coerceAtLeast(0), Charsets.US_ASCII).contains("HTTP/")
+        } catch (_: Exception) { false }
+    }
 }

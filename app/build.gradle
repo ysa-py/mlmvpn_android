@@ -68,12 +68,32 @@ android {
         }
     }
 
+    // Release signing. CI decodes the keystore from GitHub Secrets and passes it in through
+    // environment variables (see .github/workflows/release.yml and docs/RELEASE-SIGNING.md).
+    // When MLM_RELEASE_KEYSTORE is not set (e.g. a local Windows build), the release APK is
+    // left unsigned, exactly as before.
+    def releaseKeystorePath = System.getenv('MLM_RELEASE_KEYSTORE')
+    if (releaseKeystorePath) {
+        signingConfigs {
+            release {
+                storeFile file(releaseKeystorePath)
+                storeType 'pkcs12'
+                storePassword System.getenv('MLM_RELEASE_STORE_PASSWORD')
+                keyAlias System.getenv('MLM_RELEASE_KEY_ALIAS')
+                keyPassword System.getenv('MLM_RELEASE_STORE_PASSWORD')
+            }
+        }
+    }
+
     buildTypes {
         release {
             // R8: shrink unused library code (keeps all app code + native core).
             // shrinkResources left off — res is tiny and dynamic lookups exist.
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (releaseKeystorePath) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 

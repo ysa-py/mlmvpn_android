@@ -3574,7 +3574,7 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
                 val result = runV2RayOuterLeg(budget)
                 if (result != null) {
                     if (auto) {
-                        getSharedPreferences("settings", Context.MODE_PRIVATE).edit()
+                        getSharedPreferences("settings", android.content.Context.MODE_PRIVATE).edit()
                             .putInt(CoreConfig.CHAIN_OUTER_PREF, index).apply()
                     }
                     chainOuterCommitted = true

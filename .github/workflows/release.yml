@@ -11,9 +11,16 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Pinned rather than `ubuntu-latest`: GitHub moves `ubuntu-latest` to Ubuntu 26 on 2026-10-19,
+    # and an unannounced image change is the last thing a release build should depend on.
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          # The native cores in app/src/main/jniLibs/ are Git LFS objects (see .gitattributes).
+          # Without LFS the checkout leaves their 132-byte pointer files in place, and those get
+          # packaged into the APK as if they were the libraries.
+          lfs: true
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -21,21 +28,104 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          # The build runs Node scripts (checkWorkerAsset, testWorker). testWorker imports
+          # `node:sqlite`, which needs Node 22.13 or newer.
+          node-version: '22'
+
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          # Installed explicitly, so the build does not depend on what the image or AGP fetches
+          # at runtime: compileSdk 34 and buildToolsVersion 35.0.0 from app/build.gradle.
+          # The v3 default also asked for the obsolete `tools` package, which the SDK repository
+          # no longer serves ("Failed to find package 'tools'"), and that failed the job.
+          packages: 'platform-tools platforms;android-34 build-tools;35.0.0'
+
+      - name: Adapt gradle.properties for this runner
+        run: |
+          # gradle.properties holds settings for the maintainer's Windows PC: a SOCKS proxy on
+          # 127.0.0.1:10808, the Android Studio JDK under C:/Program Files, and a C:\ temp dir.
+          # None of them exist on this runner, and the proxy would refuse every download.
+          # The 2 GB daemon heap is too small for R8 (release shrinking) on the native cores:
+          # the build died with OutOfMemoryError in R8Task. The runner has 16 GB, so it gets 5 GB.
+          # Only this runner's checkout is changed. The committed file is left as it is, so the
+          # Windows build keeps its settings.
+          sed -i -E \
+            -e '/^systemProp\.socks/d' \
+            -e '/^org\.gradle\.java\.home=/d' \
+            -e '/^org\.gradle\.java\.installations\.paths=/d' \
+            -e 's/ -Djdk\.net\.unixdomain\.tmpdir=[^ ]*//' \
+            -e 's/-Xmx[0-9]+[mMgG]/-Xmx5g/' \
+            gradle.properties
+          echo "gradle.properties as used on this runner:"
+          cat gradle.properties
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
           key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
 
+      - name: Prepare release signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          # The release keystore lives only in GitHub Secrets. It is written to the runner's temp
+          # directory (outside the checkout, never committed) and deleted again at the end of the job.
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error title=Release signing::Secret ANDROID_KEYSTORE_BASE64 is missing. Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          if [ -z "$STORE_PASSWORD" ]; then
+            echo "::error title=Release signing::Secret ANDROID_KEYSTORE_PASSWORD is missing. Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/mlmvpn-release.p12"
+          test -s "$RUNNER_TEMP/mlmvpn-release.p12" || { echo "::error title=Release signing::Decoded keystore is empty; check ANDROID_KEYSTORE_BASE64."; exit 1; }
+          echo "Release keystore written to the runner temp directory (contents not printed)."
+
       - name: Build release APKs
+        env:
+          MLM_RELEASE_KEYSTORE: ${{ runner.temp }}/mlmvpn-release.p12
+          MLM_RELEASE_KEY_ALIAS: mlmvpn-release
+          MLM_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --stacktrace
+
+      - name: Verify APK signatures
+        env:
+          # SHA-256 of the release signing certificate. A signed APK from any other key is rejected:
+          # phones only accept updates signed by the key that installed the app first.
+          EXPECTED_CERT_SHA256: 5fe7e1da56be574fcf5e1332f7dd571f21c3814611db2bd3c6510b6988e0d06a
+        run: |
+          set -euo pipefail
+          apksigner="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools/35.0.0/apksigner"
+          count=0
+          while IFS= read -r apk; do
+            count=$((count + 1))
+            "$apksigner" verify --verbose "$apk"
+            digest=$("$apksigner" verify --print-certs "$apk" | awk -F': ' '/Signer #1 certificate SHA-256 digest/ {print $2}')
+            if [ "$digest" != "$EXPECTED_CERT_SHA256" ]; then
+              echo "::error file=$apk::Signed with certificate $digest, expected $EXPECTED_CERT_SHA256."
+              exit 1
+            fi
+            echo "OK: $apk is signed with the release key."
+          done < <(find app/build/outputs/apk -name '*.apk' -type f)
+          if [ "$count" -eq 0 ]; then
+            echo "::error::No release APKs were produced."
+            exit 1
+          fi
+
+      - name: Remove release keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/mlmvpn-release.p12"
 
       - name: Rename APKs
         run: |
