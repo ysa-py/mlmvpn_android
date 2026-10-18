@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - arena/7af180d9-mlmvpn-android   # TEMP signing test trigger (to be reverted)
   workflow_dispatch:
 
 permissions:
@@ -126,6 +128,16 @@ jobs:
       - name: Remove release keystore
         if: always()
         run: rm -f "$RUNNER_TEMP/mlmvpn-release.p12"
+
+      - name: TEMP report signing result
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          files=$(find app/build/outputs/apk -name '*.apk' -type f -printf '%f (%s bytes)\n' 2>/dev/null || true)
+          body=$(printf 'TEMP signing test on %s\njob status: %s\nAPKs:\n%s\n' "${GITHUB_SHA}" "$JOB_STATUS" "${files:-none}")
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" -f body="$body" --jq '.html_url'
 
       - name: Rename APKs
         run: |
